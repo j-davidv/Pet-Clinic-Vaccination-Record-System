@@ -76,14 +76,6 @@ The system uses a **normalized relational database** following the Third Normal 
 - One **Pet** → Many **Vaccinations** (1:M)
 - One **VaccineType** → Many **Vaccinations** (1:M)
 
-### Benefits of 3NF Design
-✅ **Eliminates Redundancy**: Owner data stored once, not repeated per pet  
-✅ **Eliminates Vaccine Duplication**: Vaccine names stored once, referenced by ID  
-✅ **Data Consistency**: Single source of truth for owner and vaccine information  
-✅ **Referential Integrity**: Foreign key constraints prevent orphaned records  
-✅ **Cascade Deletes**: Deleting an owner automatically removes their pets and vaccinations  
-✅ **Efficient Queries**: Indexed foreign keys for optimal JOIN performance
-
 See `ERD.md` for detailed Entity Relationship Diagram.
 
 ## 🛠️ Technology Stack
