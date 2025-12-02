@@ -4,11 +4,10 @@
 import customtkinter as ctk
 from tkinter import messagebox
 from tkcalendar import DateEntry
-from models import Pet
+from models import Pet, Owner
 from database import DatabaseManager
 from datetime import datetime
 import re
-
 
 class AddPetWindow(ctk.CTkToplevel):
     # Add Pet Window class
@@ -232,7 +231,22 @@ class AddPetWindow(ctk.CTkToplevel):
             return
         
         try:
-            # Create Pet object
+            # Create or get owner
+            owner_name = self.owner_name_entry.get().strip()
+            owner_phone = self.owner_phone_entry.get().strip()
+            owner_email = self.owner_email_entry.get().strip()
+            owner_address = self.owner_address_entry.get("1.0", "end-1c").strip()
+            
+            owner = Owner(
+                name=owner_name,
+                phone=owner_phone,
+                email=owner_email,
+                address=owner_address
+            )
+            
+            owner_id = self.db.create_owner(owner)
+            
+            # Create Pet object with owner_id
             pet = Pet(
                 name=self.name_entry.get().strip(),
                 species=self.species_var.get(),
@@ -240,10 +254,7 @@ class AddPetWindow(ctk.CTkToplevel):
                 date_of_birth=self.dob_entry.get_date().strftime("%Y-%m-%d"),
                 gender=self.gender_var.get(),
                 color=self.color_entry.get().strip(),
-                owner_name=self.owner_name_entry.get().strip(),
-                owner_phone=self.owner_phone_entry.get().strip(),
-                owner_email=self.owner_email_entry.get().strip(),
-                owner_address=self.owner_address_entry.get("1.0", "end-1c").strip(),
+                owner_id=owner_id,
                 microchip_number=self.microchip_entry.get().strip(),
                 registration_date=datetime.now().strftime("%Y-%m-%d"),
                 notes=self.notes_entry.get("1.0", "end-1c").strip()

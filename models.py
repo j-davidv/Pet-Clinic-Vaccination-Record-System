@@ -4,12 +4,81 @@ from datetime import datetime
 from typing import Optional
 
 
+class Owner:
+    # Owner model class pet owner entity
+    def __init__(self, owner_id: Optional[int] = None, name: str = "", 
+                phone: str = "", email: str = "", address: str = ""):
+        self._owner_id = owner_id
+        self._name = name
+        self._phone = phone
+        self._email = email
+        self._address = address
+    
+    # Getters and Setters
+    @property
+    def owner_id(self) -> Optional[int]:
+        return self._owner_id
+    
+    @owner_id.setter
+    def owner_id(self, value: int):
+        self._owner_id = value
+    
+    @property
+    def name(self) -> str:
+        return self._name
+    
+    @name.setter
+    def name(self, value: str):
+        if not value.strip():
+            raise ValueError("Owner name cannot be empty")
+        self._name = value.strip()
+    
+    @property
+    def phone(self) -> str:
+        return self._phone
+    
+    @phone.setter
+    def phone(self, value: str):
+        if not value.strip():
+            raise ValueError("Owner phone cannot be empty")
+        self._phone = value.strip()
+    
+    @property
+    def email(self) -> str:
+        return self._email
+    
+    @email.setter
+    def email(self, value: str):
+        self._email = value.strip()
+    
+    @property
+    def address(self) -> str:
+        return self._address
+    
+    @address.setter
+    def address(self, value: str):
+        self._address = value.strip()
+    
+    def to_dict(self) -> dict:
+        # Convert Owner object to dictionary
+        return {
+            'owner_id': self._owner_id,
+            'name': self._name,
+            'phone': self._phone,
+            'email': self._email,
+            'address': self._address
+        }
+    
+    def __str__(self) -> str:
+        # String representation of Owner
+        return f"Owner(ID: {self._owner_id}, Name: {self._name}, Phone: {self._phone})"
+
+
 class Pet:
     # Pet model class representing a pet entity
     def __init__(self, pet_id: Optional[int] = None, name: str = "", species: str = "",
                 breed: str = "", date_of_birth: str = "", gender: str = "",
-                color: str = "", owner_name: str = "", owner_phone: str = "",
-                owner_email: str = "", owner_address: str = "", 
+                color: str = "", owner_id: int = 0, 
                 microchip_number: str = "", registration_date: str = "",
                 notes: str = "", is_active: int = 1):
         # Initialize Pet object with validation
@@ -20,10 +89,7 @@ class Pet:
         self._date_of_birth = date_of_birth
         self._gender = gender
         self._color = color
-        self._owner_name = owner_name
-        self._owner_phone = owner_phone
-        self._owner_email = owner_email
-        self._owner_address = owner_address
+        self._owner_id = owner_id
         self._microchip_number = microchip_number
         self._registration_date = registration_date or datetime.now().strftime("%Y-%m-%d")
         self._notes = notes
@@ -91,40 +157,14 @@ class Pet:
         self._color = value.strip()
     
     @property
-    def owner_name(self) -> str:
-        return self._owner_name
+    def owner_id(self) -> int:
+        return self._owner_id
     
-    @owner_name.setter
-    def owner_name(self, value: str):
-        if not value.strip():
-            raise ValueError("Owner name cannot be empty")
-        self._owner_name = value.strip()
-    
-    @property
-    def owner_phone(self) -> str:
-        return self._owner_phone
-    
-    @owner_phone.setter
-    def owner_phone(self, value: str):
-        if not value.strip():
-            raise ValueError("Owner phone cannot be empty")
-        self._owner_phone = value.strip()
-    
-    @property
-    def owner_email(self) -> str:
-        return self._owner_email
-    
-    @owner_email.setter
-    def owner_email(self, value: str):
-        self._owner_email = value.strip()
-    
-    @property
-    def owner_address(self) -> str:
-        return self._owner_address
-    
-    @owner_address.setter
-    def owner_address(self, value: str):
-        self._owner_address = value.strip()
+    @owner_id.setter
+    def owner_id(self, value: int):
+        if value <= 0:
+            raise ValueError("Owner ID must be a positive integer")
+        self._owner_id = value
     
     @property
     def microchip_number(self) -> str:
@@ -168,10 +208,7 @@ class Pet:
             'date_of_birth': self._date_of_birth,
             'gender': self._gender,
             'color': self._color,
-            'owner_name': self._owner_name,
-            'owner_phone': self._owner_phone,
-            'owner_email': self._owner_email,
-            'owner_address': self._owner_address,
+            'owner_id': self._owner_id,
             'microchip_number': self._microchip_number,
             'registration_date': self._registration_date,
             'notes': self._notes,
@@ -180,26 +217,74 @@ class Pet:
     
     def __str__(self) -> str:
         # String representation of Pet
-        return f"Pet(ID: {self._pet_id}, Name: {self._name}, Species: {self._species}, Owner: {self._owner_name})"
+        return f"Pet(ID: {self._pet_id}, Name: {self._name}, Species: {self._species}, Owner ID: {self._owner_id})"
+
+
+class VaccineType:
+    # VaccineType model class representing a vaccine type entity
+    def __init__(self, vaccine_id: Optional[int] = None, vaccine_name: str = "", 
+                manufacturer: str = ""):
+        # Initialize VaccineType object with validation
+        self._vaccine_id = vaccine_id
+        self._vaccine_name = vaccine_name
+        self._manufacturer = manufacturer
+    
+    # Getters and Setters
+    @property
+    def vaccine_id(self) -> Optional[int]:
+        return self._vaccine_id
+    
+    @vaccine_id.setter
+    def vaccine_id(self, value: int):
+        self._vaccine_id = value
+    
+    @property
+    def vaccine_name(self) -> str:
+        return self._vaccine_name
+    
+    @vaccine_name.setter
+    def vaccine_name(self, value: str):
+        if not value.strip():
+            raise ValueError("Vaccine name cannot be empty")
+        self._vaccine_name = value.strip()
+    
+    @property
+    def manufacturer(self) -> str:
+        return self._manufacturer
+    
+    @manufacturer.setter
+    def manufacturer(self, value: str):
+        self._manufacturer = value.strip()
+    
+    def to_dict(self) -> dict:
+        # Convert VaccineType object to dictionary
+        return {
+            'vaccine_id': self._vaccine_id,
+            'vaccine_name': self._vaccine_name,
+            'manufacturer': self._manufacturer
+        }
+    
+    def __str__(self) -> str:
+        # String representation of VaccineType
+        return f"VaccineType(ID: {self._vaccine_id}, Name: {self._vaccine_name}, Manufacturer: {self._manufacturer})"
 
 
 class Vaccination:
     # Vaccination model class representing a vaccination record
     def __init__(self, vaccination_id: Optional[int] = None, pet_id: int = 0,
-                vaccine_name: str = "", vaccination_date: str = "",
+                vaccine_id: int = 0, vaccination_date: str = "",
                 next_due_date: str = "", veterinarian_name: str = "",
-                batch_number: str = "", manufacturer: str = "",
+                batch_number: str = "",
                 dose_number: int = 1, site_administered: str = "",
                 adverse_reactions: str = "", notes: str = ""):
         # Initialize Vaccination object with validation
         self._vaccination_id = vaccination_id
         self._pet_id = pet_id
-        self._vaccine_name = vaccine_name
+        self._vaccine_id = vaccine_id
         self._vaccination_date = vaccination_date
         self._next_due_date = next_due_date
         self._veterinarian_name = veterinarian_name
         self._batch_number = batch_number
-        self._manufacturer = manufacturer
         self._dose_number = dose_number
         self._site_administered = site_administered
         self._adverse_reactions = adverse_reactions
@@ -225,14 +310,14 @@ class Vaccination:
         self._pet_id = value
     
     @property
-    def vaccine_name(self) -> str:
-        return self._vaccine_name
+    def vaccine_id(self) -> int:
+        return self._vaccine_id
     
-    @vaccine_name.setter
-    def vaccine_name(self, value: str):
-        if not value.strip():
-            raise ValueError("Vaccine name cannot be empty")
-        self._vaccine_name = value.strip()
+    @vaccine_id.setter
+    def vaccine_id(self, value: int):
+        if value <= 0:
+            raise ValueError("Vaccine ID must be a positive integer")
+        self._vaccine_id = value
     
     @property
     def vaccination_date(self) -> str:
@@ -267,14 +352,6 @@ class Vaccination:
     @batch_number.setter
     def batch_number(self, value: str):
         self._batch_number = value.strip()
-    
-    @property
-    def manufacturer(self) -> str:
-        return self._manufacturer
-    
-    @manufacturer.setter
-    def manufacturer(self, value: str):
-        self._manufacturer = value.strip()
     
     @property
     def dose_number(self) -> int:
@@ -315,12 +392,11 @@ class Vaccination:
         return {
             'vaccination_id': self._vaccination_id,
             'pet_id': self._pet_id,
-            'vaccine_name': self._vaccine_name,
+            'vaccine_id': self._vaccine_id,
             'vaccination_date': self._vaccination_date,
             'next_due_date': self._next_due_date,
             'veterinarian_name': self._veterinarian_name,
             'batch_number': self._batch_number,
-            'manufacturer': self._manufacturer,
             'dose_number': self._dose_number,
             'site_administered': self._site_administered,
             'adverse_reactions': self._adverse_reactions,
@@ -329,4 +405,4 @@ class Vaccination:
     
     def __str__(self) -> str:
         # String representation of Vaccination
-        return f"Vaccination(ID: {self._vaccination_id}, Pet ID: {self._pet_id}, Vaccine: {self._vaccine_name}, Date: {self._vaccination_date})"
+        return f"Vaccination(ID: {self._vaccination_id}, Pet ID: {self._pet_id}, Vaccine ID: {self._vaccine_id}, Date: {self._vaccination_date})"

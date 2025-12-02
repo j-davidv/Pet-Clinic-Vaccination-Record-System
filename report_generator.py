@@ -56,7 +56,7 @@ class ReportGenerator:
             textColor=colors.HexColor('#2C3E50')
         )
     
-    def generate_pet_report(self, pet: Pet, vaccinations: List[Vaccination]) -> str:
+    def generate_pet_report(self, pet: Pet, vaccinations: List[Vaccination], db) -> str:
         # Generate comprehensive pet report with vaccination history
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         filename = f"pet_report_{pet.name.replace(' ', '_')}_{timestamp}.pdf"
@@ -101,11 +101,12 @@ class ReportGenerator:
         owner_heading = Paragraph("Owner Information", self.heading_style)
         story.append(owner_heading)
         
+        owner = db.read_owner(pet.owner_id)
         owner_data = [
-            ['Owner Name:', pet.owner_name],
-            ['Phone:', pet.owner_phone],
-            ['Email:', pet.owner_email or 'N/A'],
-            ['Address:', pet.owner_address or 'N/A'],
+            ['Owner Name:', owner.name if owner else 'N/A'],
+            ['Phone:', owner.phone if owner else 'N/A'],
+            ['Email:', owner.email if owner else 'N/A'],
+            ['Address:', owner.address if owner else 'N/A'],
         ]
         
         owner_table = Table(owner_data, colWidths=[1.5*inch, 5*inch])
@@ -128,9 +129,11 @@ class ReportGenerator:
         if vaccinations:
             vacc_data = [['Date', 'Vaccine', 'Next Due', 'Veterinarian', 'Dose']]
             for vacc in vaccinations:
+                vaccine = db.read_vaccine_type(vacc.vaccine_id)
+                vaccine_name = vaccine.vaccine_name if vaccine else 'Unknown'
                 vacc_data.append([
                     vacc.vaccination_date,
-                    vacc.vaccine_name,
+                    vaccine_name,
                     vacc.next_due_date or 'N/A',
                     vacc.veterinarian_name or 'N/A',
                     str(vacc.dose_number)
@@ -175,7 +178,7 @@ class ReportGenerator:
         doc.build(story)
         return filepath
     
-    def generate_all_pets_report(self, pets: List[Pet]) -> str:
+    def generate_all_pets_report(self, pets: List[Pet], db) -> str:
         # Generate report of all pets
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         filename = f"all_pets_report_{timestamp}.pdf"
@@ -198,13 +201,14 @@ class ReportGenerator:
         if pets:
             pet_data = [['ID', 'Name', 'Species', 'Breed', 'Owner', 'Phone']]
             for pet in pets:
+                owner = db.read_owner(pet.owner_id)
                 pet_data.append([
                     str(pet.pet_id),
                     pet.name,
                     pet.species,
                     pet.breed or 'N/A',
-                    pet.owner_name,
-                    pet.owner_phone
+                    owner.name if owner else 'N/A',
+                    owner.phone if owner else 'N/A'
                 ])
             
             pet_table = Table(pet_data, colWidths=[0.5*inch, 1.3*inch, 1*inch, 1.2*inch, 1.5*inch, 1.2*inch])

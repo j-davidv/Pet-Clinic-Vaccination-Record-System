@@ -3,11 +3,10 @@
 import customtkinter as ctk
 from tkinter import messagebox
 from tkcalendar import DateEntry
-from models import Pet
+from models import Pet, Owner
 from database import DatabaseManager
 from datetime import datetime
 import re
-
 
 class UpdatePetWindow(ctk.CTkToplevel):
     # Update Pet Window class
@@ -125,7 +124,9 @@ class UpdatePetWindow(ctk.CTkToplevel):
                 pet_frame = ctk.CTkFrame(self.pet_list_frame)
                 pet_frame.pack(fill="x", padx=5, pady=3)
                 
-                info = f"ID: {pet.pet_id} | {pet.name} ({pet.species}) - Owner: {pet.owner_name}"
+                owner = self.db.read_owner(pet.owner_id)
+                owner_name = owner.name if owner else "Unknown"
+                info = f"ID: {pet.pet_id} | {pet.name} ({pet.species}) - Owner: {owner_name}"
                 pet_label = ctk.CTkLabel(
                     pet_frame,
                     text=info,
@@ -257,27 +258,29 @@ class UpdatePetWindow(ctk.CTkToplevel):
         owner_section.grid(row=row, column=0, columnspan=2, sticky="w", pady=(15, 10))
         
         row += 1
+        owner = self.db.read_owner(pet.owner_id)
         ctk.CTkLabel(self.form_frame, text="Owner Name: *").grid(row=row, column=0, sticky="w", pady=5, padx=5)
         self.owner_name_entry = ctk.CTkEntry(self.form_frame, width=300)
-        self.owner_name_entry.insert(0, pet.owner_name)
+        self.owner_name_entry.insert(0, owner.name if owner else "")
         self.owner_name_entry.grid(row=row, column=1, pady=5, padx=5, sticky="w")
+        self.owner_id = pet.owner_id
         
         row += 1
         ctk.CTkLabel(self.form_frame, text="Owner Phone: *").grid(row=row, column=0, sticky="w", pady=5, padx=5)
         self.owner_phone_entry = ctk.CTkEntry(self.form_frame, width=300)
-        self.owner_phone_entry.insert(0, pet.owner_phone)
+        self.owner_phone_entry.insert(0, owner.phone if owner else "")
         self.owner_phone_entry.grid(row=row, column=1, pady=5, padx=5, sticky="w")
         
         row += 1
         ctk.CTkLabel(self.form_frame, text="Owner Email:").grid(row=row, column=0, sticky="w", pady=5, padx=5)
         self.owner_email_entry = ctk.CTkEntry(self.form_frame, width=300)
-        self.owner_email_entry.insert(0, pet.owner_email)
+        self.owner_email_entry.insert(0, owner.email if owner else "")
         self.owner_email_entry.grid(row=row, column=1, pady=5, padx=5, sticky="w")
         
         row += 1
         ctk.CTkLabel(self.form_frame, text="Owner Address:").grid(row=row, column=0, sticky="w", pady=5, padx=5)
         self.owner_address_entry = ctk.CTkTextbox(self.form_frame, width=300, height=60)
-        self.owner_address_entry.insert("1.0", pet.owner_address)
+        self.owner_address_entry.insert("1.0", owner.address if owner else "")
         self.owner_address_entry.grid(row=row, column=1, pady=5, padx=5, sticky="w")
         
         row += 1
@@ -338,6 +341,29 @@ class UpdatePetWindow(ctk.CTkToplevel):
             return
         
         try:
+            # Update owner
+            owner_name = self.owner_name_entry.get().strip()
+            owner_phone = self.owner_phone_entry.get().strip()
+            owner_email = self.owner_email_entry.get().strip()
+            owner_address = self.owner_address_entry.get("1.0", "end-1c").strip()
+            
+            if not owner_name:
+                messagebox.showerror("Error", "Owner name is required")
+                return
+            
+            if not owner_phone:
+                messagebox.showerror("Error", "Owner phone is required")
+                return
+            
+            owner = Owner(
+                owner_id=self.owner_id,
+                name=owner_name,
+                phone=owner_phone,
+                email=owner_email,
+                address=owner_address
+            )
+            self.db.update_owner(owner)
+            
             # Update pet object
             self.current_pet.name = self.name_entry.get().strip()
             self.current_pet.species = self.species_var.get()
@@ -346,24 +372,13 @@ class UpdatePetWindow(ctk.CTkToplevel):
             self.current_pet.gender = self.gender_var.get()
             self.current_pet.color = self.color_entry.get().strip()
             self.current_pet.microchip_number = self.microchip_entry.get().strip()
-            self.current_pet.owner_name = self.owner_name_entry.get().strip()
-            self.current_pet.owner_phone = self.owner_phone_entry.get().strip()
-            self.current_pet.owner_email = self.owner_email_entry.get().strip()
-            self.current_pet.owner_address = self.owner_address_entry.get("1.0", "end-1c").strip()
+            self.current_pet.owner_id = self.owner_id
             self.current_pet.notes = self.notes_entry.get("1.0", "end-1c").strip()
             self.current_pet.is_active = 1 if self.active_var.get() else 0
             
             # Validate required fields
             if not self.current_pet.name:
                 messagebox.showerror("Error", "Pet name is required")
-                return
-            
-            if not self.current_pet.owner_name:
-                messagebox.showerror("Error", "Owner name is required")
-                return
-            
-            if not self.current_pet.owner_phone:
-                messagebox.showerror("Error", "Owner phone is required")
                 return
             
             # Update in database

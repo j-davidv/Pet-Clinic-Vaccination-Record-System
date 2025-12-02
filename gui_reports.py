@@ -201,7 +201,7 @@ class ReportsWindow(ctk.CTkToplevel):
         # Generate report for selected pet
         try:
             vaccinations = self.db.read_vaccinations_by_pet(pet.pet_id)
-            filepath = self.report_gen.generate_pet_report(pet, vaccinations)
+            filepath = self.report_gen.generate_pet_report(pet, vaccinations, self.db)
             
             window.destroy()
             
@@ -229,7 +229,7 @@ class ReportsWindow(ctk.CTkToplevel):
                 messagebox.showwarning("No Pets", "No pets found in the system")
                 return
             
-            filepath = self.report_gen.generate_all_pets_report(pets)
+            filepath = self.report_gen.generate_all_pets_report(pets, self.db)
             
             messagebox.showinfo(
                 "Report Generated",

@@ -6,20 +6,18 @@ Manages vaccination records with add, view, update, and delete operations
 import customtkinter as ctk
 from tkinter import messagebox
 from tkcalendar import DateEntry
-from models import Pet, Vaccination
+from models import Pet, Vaccination, VaccineType
 from database import DatabaseManager
 from datetime import datetime, timedelta
 from prettytable import PrettyTable
-
 
 class VaccinationRecordsWindow(ctk.CTkToplevel):
     """
     Vaccination Records Window class
     Manages all vaccination-related operations
     """
-    
     def __init__(self, parent, db: DatabaseManager, callback=None):
-        """Initialize Vaccination Records window"""
+        # Initialize Vaccination Records window
         super().__init__(parent)
         
         self.db = db
@@ -41,7 +39,7 @@ class VaccinationRecordsWindow(ctk.CTkToplevel):
         self._center_window()
     
     def _center_window(self):
-        """Center window on screen"""
+        # Center window on screen
         self.update_idletasks()
         width = self.winfo_width()
         height = self.winfo_height()
@@ -50,7 +48,7 @@ class VaccinationRecordsWindow(ctk.CTkToplevel):
         self.geometry(f'{width}x{height}+{x}+{y}')
     
     def _setup_ui(self):
-        """Setup user interface"""
+        # Setup user interface
         # Main container
         main_frame = ctk.CTkFrame(self)
         main_frame.pack(fill="both", expand=True, padx=20, pady=20)
@@ -131,7 +129,7 @@ class VaccinationRecordsWindow(ctk.CTkToplevel):
         close_btn.pack(pady=(10, 0))
     
     def _show_no_selection_message(self):
-        """Show message when no pet is selected"""
+        # Show message when no pet is selected
         for widget in self.vacc_list_frame.winfo_children():
             widget.destroy()
         
@@ -144,13 +142,13 @@ class VaccinationRecordsWindow(ctk.CTkToplevel):
         msg.pack(pady=50)
     
     def _on_pet_selected(self, selection):
-        """Handle pet selection"""
+        # Handle pet selection
         if selection in self.pet_dict:
             self.selected_pet = self.pet_dict[selection]
             self._load_vaccinations()
     
     def _load_vaccinations(self):
-        """Load vaccinations for selected pet"""
+        # Load vaccinations for selected pet
         if not self.selected_pet:
             return
         
@@ -178,7 +176,7 @@ class VaccinationRecordsWindow(ctk.CTkToplevel):
             messagebox.showerror("Error", f"Error loading vaccinations: {str(e)}")
     
     def _create_vaccination_card(self, vacc: Vaccination):
-        """Create a card for displaying vaccination information"""
+        # Create a card for displaying vaccination information
         card = ctk.CTkFrame(self.vacc_list_frame)
         card.pack(fill="x", padx=5, pady=5)
         
@@ -187,9 +185,11 @@ class VaccinationRecordsWindow(ctk.CTkToplevel):
         info_frame.pack(side="left", fill="both", expand=True, padx=10, pady=10)
         
         # Vaccine name
+        vaccine = self.db.read_vaccine_type(vacc.vaccine_id)
+        vaccine_name = vaccine.vaccine_name if vaccine else "Unknown"
         name_label = ctk.CTkLabel(
             info_frame,
-            text=f"💉 {vacc.vaccine_name}",
+            text=f"💉 {vaccine_name}",
             font=ctk.CTkFont(size=14, weight="bold")
         )
         name_label.pack(anchor="w")
@@ -247,18 +247,22 @@ class VaccinationRecordsWindow(ctk.CTkToplevel):
         delete_btn.pack(side="left", padx=3)
     
     def _view_vaccination_details(self, vacc: Vaccination):
-        """Show detailed vaccination information"""
+        # Show detailed vaccination information
+        vaccine = self.db.read_vaccine_type(vacc.vaccine_id)
+        vaccine_name = vaccine.vaccine_name if vaccine else "Unknown"
+        manufacturer = vaccine.manufacturer if vaccine else "N/A"
+        
         details = f"""
 Vaccination Details:
 
-Vaccine: {vacc.vaccine_name}
+Vaccine: {vaccine_name}
 Vaccination Date: {vacc.vaccination_date}
 Next Due Date: {vacc.next_due_date or 'N/A'}
 Dose Number: {vacc.dose_number}
 
 Veterinarian: {vacc.veterinarian_name or 'N/A'}
 Batch Number: {vacc.batch_number or 'N/A'}
-Manufacturer: {vacc.manufacturer or 'N/A'}
+Manufacturer: {manufacturer}
 Site Administered: {vacc.site_administered or 'N/A'}
 
 Adverse Reactions: {vacc.adverse_reactions or 'None reported'}
@@ -269,10 +273,12 @@ Notes: {vacc.notes or 'No additional notes'}
         messagebox.showinfo("Vaccination Details", details.strip())
     
     def _delete_vaccination(self, vacc: Vaccination):
-        """Delete vaccination record"""
+        # Delete vaccination record
+        vaccine = self.db.read_vaccine_type(vacc.vaccine_id)
+        vaccine_name = vaccine.vaccine_name if vaccine else "Unknown"
         confirm = messagebox.askyesno(
             "Confirm Deletion",
-            f"Are you sure you want to delete the vaccination record for '{vacc.vaccine_name}'?"
+            f"Are you sure you want to delete the vaccination record for '{vaccine_name}'?"
         )
         
         if not confirm:
@@ -294,7 +300,7 @@ Notes: {vacc.notes or 'No additional notes'}
             messagebox.showerror("Error", f"Error deleting vaccination: {str(e)}")
     
     def _show_add_vaccination_form(self):
-        """Show form to add new vaccination"""
+        # Show form to add new vaccination
         if not self.selected_pet:
             messagebox.showwarning("No Pet Selected", "Please select a pet first")
             return
@@ -322,8 +328,23 @@ Notes: {vacc.notes or 'No additional notes'}
         
         # Vaccine name
         ctk.CTkLabel(form_frame, text="Vaccine Name: *").grid(row=row, column=0, sticky="w", pady=5, padx=5)
-        vaccine_entry = ctk.CTkEntry(form_frame, width=300)
-        vaccine_entry.grid(row=row, column=1, pady=5, padx=5, sticky="w")
+        
+        vaccine_var = ctk.StringVar()
+        vaccine_combo = ctk.CTkComboBox(form_frame, variable=vaccine_var, width=300, state="normal")
+        
+        # Load vaccine types
+        self.vaccine_map = {}
+        try:
+            vaccines = self.db.read_all_vaccine_types()
+            if vaccines:
+                vaccine_combo.configure(values=[v.vaccine_name for v in vaccines])
+                self.vaccine_map = {v.vaccine_name: v.vaccine_id for v in vaccines}
+            else:
+                vaccine_combo.configure(values=[""])
+        except Exception as e:
+            vaccine_combo.configure(values=[""])
+        
+        vaccine_combo.grid(row=row, column=1, pady=5, padx=5, sticky="w")
         
         row += 1
         ctk.CTkLabel(form_frame, text="Vaccination Date: *").grid(row=row, column=0, sticky="w", pady=5, padx=5)
@@ -362,11 +383,6 @@ Notes: {vacc.notes or 'No additional notes'}
         batch_entry.grid(row=row, column=1, pady=5, padx=5, sticky="w")
         
         row += 1
-        ctk.CTkLabel(form_frame, text="Manufacturer:").grid(row=row, column=0, sticky="w", pady=5, padx=5)
-        manufacturer_entry = ctk.CTkEntry(form_frame, width=300)
-        manufacturer_entry.grid(row=row, column=1, pady=5, padx=5, sticky="w")
-        
-        row += 1
         ctk.CTkLabel(form_frame, text="Dose Number:").grid(row=row, column=0, sticky="w", pady=5, padx=5)
         dose_entry = ctk.CTkEntry(form_frame, width=300)
         dose_entry.insert(0, "1")
@@ -398,10 +414,21 @@ Notes: {vacc.notes or 'No additional notes'}
         
         # Save function
         def save_vaccination():
-            vaccine_name = vaccine_entry.get().strip()
-            if not vaccine_name:
-                messagebox.showerror("Error", "Vaccine name is required")
+            vaccine_name = vaccine_var.get().strip()
+            if not vaccine_name or vaccine_name in ["Add new vaccine type", "Error loading vaccines"]:
+                messagebox.showerror("Error", "Please select or enter a valid vaccine name")
                 return
+            
+            vaccine_id = self.vaccine_map.get(vaccine_name)
+            
+            # If vaccine doesn't exist in map, create it as a new vaccine type
+            if not vaccine_id:
+                try:
+                    new_vaccine = VaccineType(vaccine_name=vaccine_name, manufacturer="")
+                    vaccine_id = self.db.create_vaccine_type(new_vaccine)
+                except Exception as e:
+                    messagebox.showerror("Error", f"Error creating vaccine type: {str(e)}")
+                    return
             
             try:
                 dose_num = int(dose_entry.get().strip() or "1")
@@ -412,12 +439,11 @@ Notes: {vacc.notes or 'No additional notes'}
             try:
                 vacc = Vaccination(
                     pet_id=self.selected_pet.pet_id,
-                    vaccine_name=vaccine_name,
+                    vaccine_id=vaccine_id,
                     vaccination_date=vacc_date_entry.get_date().strftime("%Y-%m-%d"),
                     next_due_date=next_due_entry.get_date().strftime("%Y-%m-%d"),
                     veterinarian_name=vet_entry.get().strip(),
                     batch_number=batch_entry.get().strip(),
-                    manufacturer=manufacturer_entry.get().strip(),
                     dose_number=dose_num,
                     site_administered=site_entry.get().strip(),
                     adverse_reactions=reactions_entry.get("1.0", "end-1c").strip(),

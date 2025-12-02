@@ -1,6 +1,5 @@
 # Main Application and Dashboard for Pet Clinic Vaccination Record System
 
-
 import customtkinter as ctk
 from database import DatabaseManager
 from report_generator import ReportGenerator
@@ -10,13 +9,11 @@ from tkinter import messagebox
 from datetime import datetime
 import os
 
-
 # Import GUI windows
 from gui_add_pet import AddPetWindow
 from gui_update_pet import UpdatePetWindow
 from gui_vaccination_records import VaccinationRecordsWindow
 from gui_reports import ReportsWindow
-
 
 class PetClinicApp(ctk.CTk):
     # Main Application class for Pet Clinic System
@@ -406,7 +403,9 @@ class PetClinicApp(ctk.CTk):
                 pet_frame = ctk.CTkFrame(self.recent_pets_frame, fg_color=self.colors['light'], corner_radius=8)
                 pet_frame.pack(fill="x", padx=5, pady=5)
                 
-                info_text = f"{pet.name} ({pet.species}) - Owner: {pet.owner_name}"
+                owner = self.db.read_owner(pet.owner_id)
+                owner_name = owner.name if owner else "Unknown"
+                info_text = f"{pet.name} ({pet.species}) - Owner: {owner_name}"
                 pet_label = ctk.CTkLabel(
                     pet_frame,
                     text=info_text,
@@ -440,7 +439,7 @@ class PetClinicApp(ctk.CTk):
         # View pet details and generate report
         try:
             vaccinations = self.db.read_vaccinations_by_pet(pet.pet_id)
-            filepath = self.report_gen.generate_pet_report(pet, vaccinations)
+            filepath = self.report_gen.generate_pet_report(pet, vaccinations, self.db)
             
             messagebox.showinfo(
                 "Report Generated",
@@ -488,7 +487,6 @@ class PetClinicApp(ctk.CTk):
         # Handle application closing
         self.db.close()
         self.destroy()
-
 
 if __name__ == "__main__":
     app = PetClinicApp()

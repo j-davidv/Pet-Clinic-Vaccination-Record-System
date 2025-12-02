@@ -2,9 +2,8 @@
 
 import sqlite3
 from typing import List, Optional, Tuple
-from models import Pet, Vaccination
+from models import Pet, Owner, VaccineType, Vaccination
 import os
-
 
 class DatabaseManager:
     _instance = None
@@ -58,6 +57,17 @@ class DatabaseManager:
     
     def _create_tables_inline(self):
         # Create tables inline
+        owner_table = """
+        CREATE TABLE IF NOT EXISTS Owner (
+            owner_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            phone TEXT NOT NULL,
+            email TEXT,
+            address TEXT,
+            UNIQUE(name, phone)
+        )
+        """
+        
         pet_table = """
         CREATE TABLE IF NOT EXISTS Pet (
             pet_id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -67,14 +77,20 @@ class DatabaseManager:
             date_of_birth DATE,
             gender TEXT,
             color TEXT,
-            owner_name TEXT NOT NULL,
-            owner_phone TEXT NOT NULL,
-            owner_email TEXT,
-            owner_address TEXT,
+            owner_id INTEGER NOT NULL,
             microchip_number TEXT UNIQUE,
             registration_date DATE DEFAULT CURRENT_DATE,
             notes TEXT,
-            is_active INTEGER DEFAULT 1
+            is_active INTEGER DEFAULT 1,
+            FOREIGN KEY (owner_id) REFERENCES Owner(owner_id) ON DELETE CASCADE
+        )
+        """
+        
+        vaccine_type_table = """
+        CREATE TABLE IF NOT EXISTS VaccineType (
+            vaccine_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            vaccine_name TEXT NOT NULL UNIQUE,
+            manufacturer TEXT
         )
         """
         
@@ -82,46 +98,194 @@ class DatabaseManager:
         CREATE TABLE IF NOT EXISTS Vaccination (
             vaccination_id INTEGER PRIMARY KEY AUTOINCREMENT,
             pet_id INTEGER NOT NULL,
-            vaccine_name TEXT NOT NULL,
+            vaccine_id INTEGER NOT NULL,
             vaccination_date DATE NOT NULL,
             next_due_date DATE,
             veterinarian_name TEXT,
             batch_number TEXT,
-            manufacturer TEXT,
             dose_number INTEGER,
             site_administered TEXT,
             adverse_reactions TEXT,
             notes TEXT,
-            FOREIGN KEY (pet_id) REFERENCES Pet(pet_id) ON DELETE CASCADE
+            FOREIGN KEY (pet_id) REFERENCES Pet(pet_id) ON DELETE CASCADE,
+            FOREIGN KEY (vaccine_id) REFERENCES VaccineType(vaccine_id) ON DELETE RESTRICT
         )
         """
         
+        self.cursor.execute(owner_table)
         self.cursor.execute(pet_table)
+        self.cursor.execute(vaccine_type_table)
         self.cursor.execute(vaccination_table)
-        self.cursor.execute("CREATE INDEX IF NOT EXISTS idx_pet_owner ON Pet(owner_name)")
+        self.cursor.execute("CREATE INDEX IF NOT EXISTS idx_pet_owner ON Pet(owner_id)")
+        self.cursor.execute("CREATE INDEX IF NOT EXISTS idx_owner_name ON Owner(name)")
         self.cursor.execute("CREATE INDEX IF NOT EXISTS idx_vaccination_pet ON Vaccination(pet_id)")
+        self.cursor.execute("CREATE INDEX IF NOT EXISTS idx_vaccine_type ON Vaccination(vaccine_id)")
     
     def close(self):
         # Close database connection
         if self.connection:
             self.connection.close()
     
-    # ==================== PET CRUD OPERATIONS ====================
+    # OWNER CRUD OPERATIONS 
+    
+    def create_owner(self, owner: Owner) -> int:
+        # Create a new owner record
+        try:
+            query = """
+            INSERT INTO Owner (name, phone, email, address)
+            VALUES (?, ?, ?, ?)
+            """
+            
+            self.cursor.execute(query, (
+                owner.name, owner.phone, owner.email, owner.address
+            ))
+            
+            self.connection.commit()
+            return self.cursor.lastrowid
+        except sqlite3.IntegrityError as e:
+            raise Exception(f"Owner already exists: {e}")
+        except sqlite3.Error as e:
+            raise Exception(f"Error creating owner: {e}")
+    
+    def read_owner(self, owner_id: int) -> Optional[Owner]:
+        # Read an owner record by ID
+        try:
+            query = "SELECT * FROM Owner WHERE owner_id = ?"
+            self.cursor.execute(query, (owner_id,))
+            row = self.cursor.fetchone()
+            
+            if row:
+                return Owner(row['owner_id'], row['name'], row['phone'], 
+                        row['email'], row['address'])
+            return None
+        except sqlite3.Error as e:
+            raise Exception(f"Error reading owner: {e}")
+    
+    def read_all_owners(self) -> List[Owner]:
+        # Read all owner records
+        try:
+            query = "SELECT * FROM Owner ORDER BY name"
+            self.cursor.execute(query)
+            rows = self.cursor.fetchall()
+            
+            owners = []
+            for row in rows:
+                owners.append(Owner(row['owner_id'], row['name'], row['phone'],
+                                row['email'], row['address']))
+            return owners
+        except sqlite3.Error as e:
+            raise Exception(f"Error reading owners: {e}")
+    
+    def update_owner(self, owner: Owner) -> bool:
+        # Update an existing owner record
+        try:
+            query = """
+            UPDATE Owner SET name = ?, phone = ?, email = ?, address = ?
+            WHERE owner_id = ?
+            """
+            
+            self.cursor.execute(query, (
+                owner.name, owner.phone, owner.email, owner.address, owner.owner_id
+            ))
+            
+            self.connection.commit()
+            return self.cursor.rowcount > 0
+        except sqlite3.Error as e:
+            raise Exception(f"Error updating owner: {e}")
+    
+    def delete_owner(self, owner_id: int) -> bool:
+        # Delete an owner record (pets will cascade delete)
+        try:
+            query = "DELETE FROM Owner WHERE owner_id = ?"
+            self.cursor.execute(query, (owner_id,))
+            self.connection.commit()
+            return self.cursor.rowcount > 0
+        except sqlite3.Error as e:
+            raise Exception(f"Error deleting owner: {e}")
+    
+    #  VACCINE TYPE CRUD OPERATIONS 
+    
+    def create_vaccine_type(self, vaccine: VaccineType) -> int:
+        # Create a new vaccine type record
+        try:
+            query = """
+            INSERT INTO VaccineType (vaccine_name, manufacturer)
+            VALUES (?, ?)
+            """
+            
+            self.cursor.execute(query, (vaccine.vaccine_name, vaccine.manufacturer))
+            self.connection.commit()
+            return self.cursor.lastrowid
+        except sqlite3.IntegrityError as e:
+            raise Exception(f"Vaccine type already exists: {e}")
+        except sqlite3.Error as e:
+            raise Exception(f"Error creating vaccine type: {e}")
+    
+    def read_vaccine_type(self, vaccine_id: int) -> Optional[VaccineType]:
+        # Read a vaccine type record by ID
+        try:
+            query = "SELECT * FROM VaccineType WHERE vaccine_id = ?"
+            self.cursor.execute(query, (vaccine_id,))
+            row = self.cursor.fetchone()
+            
+            if row:
+                return VaccineType(row['vaccine_id'], row['vaccine_name'], row['manufacturer'])
+            return None
+        except sqlite3.Error as e:
+            raise Exception(f"Error reading vaccine type: {e}")
+    
+    def read_all_vaccine_types(self) -> List[VaccineType]:
+        # Read all vaccine type records
+        try:
+            query = "SELECT * FROM VaccineType ORDER BY vaccine_name"
+            self.cursor.execute(query)
+            rows = self.cursor.fetchall()
+            
+            vaccines = []
+            for row in rows:
+                vaccines.append(VaccineType(row['vaccine_id'], row['vaccine_name'], row['manufacturer']))
+            return vaccines
+        except sqlite3.Error as e:
+            raise Exception(f"Error reading vaccine types: {e}")
+    
+    def update_vaccine_type(self, vaccine: VaccineType) -> bool:
+        # Update an existing vaccine type record
+        try:
+            query = """
+            UPDATE VaccineType SET vaccine_name = ?, manufacturer = ?
+            WHERE vaccine_id = ?
+            """
+            
+            self.cursor.execute(query, (vaccine.vaccine_name, vaccine.manufacturer, vaccine.vaccine_id))
+            self.connection.commit()
+            return self.cursor.rowcount > 0
+        except sqlite3.Error as e:
+            raise Exception(f"Error updating vaccine type: {e}")
+    
+    def delete_vaccine_type(self, vaccine_id: int) -> bool:
+        # Delete a vaccine type record
+        try:
+            query = "DELETE FROM VaccineType WHERE vaccine_id = ?"
+            self.cursor.execute(query, (vaccine_id,))
+            self.connection.commit()
+            return self.cursor.rowcount > 0
+        except sqlite3.Error as e:
+            raise Exception(f"Error deleting vaccine type: {e}")
+    
+    #  PET CRUD OPERATIONS
     
     def create_pet(self, pet: Pet) -> int:
         # Create a new pet record
         try:
             query = """
             INSERT INTO Pet (name, species, breed, date_of_birth, gender, color,
-                        owner_name, owner_phone, owner_email, owner_address,
-                        microchip_number, registration_date, notes, is_active)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        owner_id, microchip_number, registration_date, notes, is_active)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """
             
             self.cursor.execute(query, (
                 pet.name, pet.species, pet.breed, pet.date_of_birth,
-                pet.gender, pet.color, pet.owner_name, pet.owner_phone,
-                pet.owner_email, pet.owner_address, pet.microchip_number,
+                pet.gender, pet.color, pet.owner_id, pet.microchip_number,
                 pet.registration_date, pet.notes, pet.is_active
             ))
             
@@ -165,16 +329,14 @@ class DatabaseManager:
         try:
             query = """
             UPDATE Pet SET name = ?, species = ?, breed = ?, date_of_birth = ?,
-                        gender = ?, color = ?, owner_name = ?, owner_phone = ?,
-                        owner_email = ?, owner_address = ?, microchip_number = ?,
+                        gender = ?, color = ?, owner_id = ?, microchip_number = ?,
                         notes = ?, is_active = ?
             WHERE pet_id = ?
             """
             
             self.cursor.execute(query, (
                 pet.name, pet.species, pet.breed, pet.date_of_birth,
-                pet.gender, pet.color, pet.owner_name, pet.owner_phone,
-                pet.owner_email, pet.owner_address, pet.microchip_number,
+                pet.gender, pet.color, pet.owner_id, pet.microchip_number,
                 pet.notes, pet.is_active, pet.pet_id
             ))
             
@@ -209,10 +371,11 @@ class DatabaseManager:
         # Search pets by name, species, or owner name
         try:
             query = """
-            SELECT * FROM Pet 
-            WHERE (name LIKE ? OR species LIKE ? OR owner_name LIKE ?) 
-            AND is_active = 1
-            ORDER BY name
+            SELECT p.* FROM Pet p
+            JOIN Owner o ON p.owner_id = o.owner_id
+            WHERE (p.name LIKE ? OR p.species LIKE ? OR o.name LIKE ?) 
+            AND p.is_active = 1
+            ORDER BY p.name
             """
             search_pattern = f"%{search_term}%"
             self.cursor.execute(query, (search_pattern, search_pattern, search_pattern))
@@ -222,22 +385,22 @@ class DatabaseManager:
         except sqlite3.Error as e:
             raise Exception(f"Error searching pets: {e}")
     
-    # CRUD OPERATIONS
+    #  VACCINATION CRUD OPERATIONS
     
     def create_vaccination(self, vaccination: Vaccination) -> int:
         # Create a new vaccination record
         try:
             query = """
-            INSERT INTO Vaccination (pet_id, vaccine_name, vaccination_date, next_due_date,
-                                veterinarian_name, batch_number, manufacturer, dose_number,
+            INSERT INTO Vaccination (pet_id, vaccine_id, vaccination_date, next_due_date,
+                                veterinarian_name, batch_number, dose_number,
                                 site_administered, adverse_reactions, notes)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """
             
             self.cursor.execute(query, (
-                vaccination.pet_id, vaccination.vaccine_name, vaccination.vaccination_date,
+                vaccination.pet_id, vaccination.vaccine_id, vaccination.vaccination_date,
                 vaccination.next_due_date, vaccination.veterinarian_name, vaccination.batch_number,
-                vaccination.manufacturer, vaccination.dose_number, vaccination.site_administered,
+                vaccination.dose_number, vaccination.site_administered,
                 vaccination.adverse_reactions, vaccination.notes
             ))
             
@@ -285,17 +448,17 @@ class DatabaseManager:
         # Update an existing vaccination record
         try:
             query = """
-            UPDATE Vaccination SET pet_id = ?, vaccine_name = ?, vaccination_date = ?,
+            UPDATE Vaccination SET pet_id = ?, vaccine_id = ?, vaccination_date = ?,
                                 next_due_date = ?, veterinarian_name = ?, batch_number = ?,
-                                manufacturer = ?, dose_number = ?, site_administered = ?,
+                                dose_number = ?, site_administered = ?,
                                 adverse_reactions = ?, notes = ?
             WHERE vaccination_id = ?
             """
             
             self.cursor.execute(query, (
-                vaccination.pet_id, vaccination.vaccine_name, vaccination.vaccination_date,
+                vaccination.pet_id, vaccination.vaccine_id, vaccination.vaccination_date,
                 vaccination.next_due_date, vaccination.veterinarian_name, vaccination.batch_number,
-                vaccination.manufacturer, vaccination.dose_number, vaccination.site_administered,
+                vaccination.dose_number, vaccination.site_administered,
                 vaccination.adverse_reactions, vaccination.notes, vaccination.vaccination_id
             ))
             
@@ -318,9 +481,11 @@ class DatabaseManager:
         # Get vaccinations due within specified days
         try:
             query = """
-            SELECT p.name, v.vaccine_name, v.next_due_date, p.owner_name, p.owner_phone
+            SELECT p.name, vt.vaccine_name, v.next_due_date, o.name, o.phone
             FROM Vaccination v
             JOIN Pet p ON v.pet_id = p.pet_id
+            JOIN VaccineType vt ON v.vaccine_id = vt.vaccine_id
+            JOIN Owner o ON p.owner_id = o.owner_id
             WHERE v.next_due_date IS NOT NULL 
             AND v.next_due_date <= date('now', '+' || ? || ' days')
             AND v.next_due_date >= date('now')
@@ -379,10 +544,7 @@ class DatabaseManager:
             date_of_birth=row['date_of_birth'] or "",
             gender=row['gender'] or "",
             color=row['color'] or "",
-            owner_name=row['owner_name'],
-            owner_phone=row['owner_phone'],
-            owner_email=row['owner_email'] or "",
-            owner_address=row['owner_address'] or "",
+            owner_id=row['owner_id'],
             microchip_number=row['microchip_number'] or "",
             registration_date=row['registration_date'] or "",
             notes=row['notes'] or "",
@@ -394,12 +556,11 @@ class DatabaseManager:
         return Vaccination(
             vaccination_id=row['vaccination_id'],
             pet_id=row['pet_id'],
-            vaccine_name=row['vaccine_name'],
+            vaccine_id=row['vaccine_id'],
             vaccination_date=row['vaccination_date'],
             next_due_date=row['next_due_date'] or "",
             veterinarian_name=row['veterinarian_name'] or "",
             batch_number=row['batch_number'] or "",
-            manufacturer=row['manufacturer'] or "",
             dose_number=row['dose_number'] or 1,
             site_administered=row['site_administered'] or "",
             adverse_reactions=row['adverse_reactions'] or "",
