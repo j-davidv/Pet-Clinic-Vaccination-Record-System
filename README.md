@@ -349,38 +349,8 @@ Pet-Clinic-Vaccination-Record-System/
 - Ensure `reports/` folder exists (created automatically)
 - Check ReportLab installation
 
-### Test Output Example
-```
-==================================================
-Pet Clinic Vaccination System - Debug Test
-==================================================
-
-=== Testing Owner Operations ===
-✓ Owner created: ID=1, Name=John Doe
-✓ Owner read: John Doe, Phone=555-1234
-✓ Owner updated: Phone=555-5678
-✓ All owners retrieved: 1 total
-
-=== Testing Vaccine Type Operations ===
-✓ Vaccine created: ID=1, Name=Rabies
-✓ Vaccine read: Rabies, Manufacturer=Zoetis
-✓ All vaccines retrieved: 1 total
-
-[... more test results ...]
-
-✓ Pet report generated: pet_report_Buddy_20251202_110306.pdf
-✓ All pets report generated: all_pets_report_20251202_110306.pdf
-✓ Vaccination schedule report generated: vaccination_schedule_20251202_110306.pdf
-
-==================================================
-Debug test completed!
-==================================================
-```
 
 ## 📝 License
 
-This project is created for educational purposes and clinic management use.
+This project is created for educational purposes.
 
----
-
-**Developed with ❤️ using Python and CustomTkinter**
